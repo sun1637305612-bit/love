@@ -4,12 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>我爱你刘彬</title>
-<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:#000; overflow:hidden; width:100vw; height:100vh; touch-action:none; }
 canvas { position:absolute; top:0; left:0; display:block; }
-
 #hint {
   position:absolute; top:50%; left:50%;
   transform:translate(-50%,-50%);
@@ -21,37 +19,25 @@ canvas { position:absolute; top:0; left:0; display:block; }
   text-align:center; line-height:2.2;
 }
 @keyframes breathe { 0%,100%{opacity:.35;} 50%{opacity:1;} }
-
 #text-layer {
   position:absolute; top:50%; left:50%;
   transform:translate(-50%, -42%);
-  display:flex;
-  gap:0.15em;
+  display:flex; gap:0.15em;
   pointer-events:none; z-index:10;
   align-items:center; justify-content:center;
 }
 .char {
-  font-family:'Ma Shan Zheng','STKaiti','KaiTi',cursive;
-  color:#fff;
-  opacity:0;
-  display:inline-block;
-  text-shadow:
-    0 0 6px #fff,
-    0 0 18px #ffbbdd,
-    0 0 40px #ff4499,
-    0 0 80px rgba(255,30,100,.45);
+  font-family:'Kaiti SC','STKaiti','KaiTi','楷体','仿宋','FangSong',cursive;
+  color:#fff; opacity:0; display:inline-block;
+  text-shadow: 0 0 6px #fff, 0 0 18px #ffbbdd, 0 0 40px #ff4499, 0 0 80px rgba(255,30,100,.45);
   clip-path: inset(0 100% 0 0);
 }
-.char.writing {
-  opacity:1;
-  animation: writeIn 1s cubic-bezier(.2,.6,.3,1) forwards;
-}
+.char.writing { opacity:1; animation: writeIn 1s cubic-bezier(.2,.6,.3,1) forwards; }
 @keyframes writeIn {
   0%   { clip-path:inset(0 100% 0 0); filter:blur(4px); }
   65%  { clip-path:inset(0 4% 0 0);   filter:blur(0.5px); }
   100% { clip-path:inset(0 0% 0 0);   filter:blur(0); }
 }
-
 #subtitle {
   position:absolute; bottom:44px; width:100%; text-align:center;
   font-family:'PingFang SC','Microsoft YaHei',sans-serif;
@@ -67,20 +53,16 @@ canvas { position:absolute; top:0; left:0; display:block; }
 <div id="hint">✦ 点击屏幕开始 ✦</div>
 <div id="text-layer"></div>
 <div id="subtitle">烟花易冷 · 爱你如初</div>
-
 <script>
 const bgC=document.getElementById('bg'), bgX=bgC.getContext('2d');
 const hC=document.getElementById('hc'),  hX=hC.getContext('2d');
 let W,H;
 function resize(){ W=bgC.width=hC.width=innerWidth; H=bgC.height=hC.height=innerHeight; }
 resize(); window.addEventListener('resize',resize);
-
 const PAL=[[255,70,120],[255,120,155],[255,160,80],[255,205,60],[240,80,200],[160,80,255],[80,200,255]];
 function rc(){ return PAL[Math.floor(Math.random()*PAL.length)]; }
 function rgba([r,g,b],a){ return `rgba(${r},${g},${b},${a.toFixed(3)})`; }
 function lerp3(a,b,t){ return a.map((v,i)=>Math.round(v+(b[i]-v)*t)); }
-
-// ── Firework sparks ───────────────────────────────────────────────
 const sparks=[];
 class Spark{
   constructor(x,y,col){
@@ -108,7 +90,6 @@ class Spark{
     }
     bgX.beginPath(); bgX.arc(this.x,this.y,this.r,0,Math.PI*2);
     bgX.fillStyle=rgba(this.col,a); bgX.fill();
-    // small glow only — no huge radius that bleeds shape
     const g=bgX.createRadialGradient(this.x,this.y,0,this.x,this.y,this.r*3);
     g.addColorStop(0,rgba(this.col,a*.25)); g.addColorStop(1,rgba(this.col,0));
     bgX.beginPath(); bgX.arc(this.x,this.y,this.r*3,0,Math.PI*2);
@@ -140,92 +121,64 @@ function fireRocket(x,y,cb){
   x=x||(W*.12+Math.random()*W*.76); y=y||(H*.1+Math.random()*H*.28);
   const col=rc(), r=new Rocket(x,y,col); r.onBurst=()=>{ burst(x,y,col); cb&&cb(); }; rockets.push(r);
 }
-
-// ── Heart shape: parametric outline → filled via Canvas path ──────
-// We draw the HEART SHAPE using canvas bezier path, then use it as
-// a clipping region + fill. Particles land ON heart surface sampled
-// from the parametric curve boundary + interior grid.
-
-function heartPath(ctx, cx, cy, size){
-  // Parametric: x=16sin³t, y=-(13cos-5cos2t-2cos3t-cos4t)  scaled by size
+function heartPath(ctx,cx,cy,size){
   ctx.beginPath();
   const N=200;
   for(let i=0;i<=N;i++){
     const t=(i/N)*Math.PI*2;
-    const px = cx + 16*Math.pow(Math.sin(t),3)*size;
-    const py = cy - (13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))*size;
-    i===0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py);
+    const px=cx+16*Math.pow(Math.sin(t),3)*size;
+    const py=cy-(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))*size;
+    i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
   }
   ctx.closePath();
 }
-
-// Sample points strictly inside heart using parametric grid
-function sampleHeartPoints(cx, cy, size, count){
+function sampleHeartPoints(cx,cy,size,count){
   const pts=[];
-  // Use fine parametric grid for outline, then fill interior with random
-  // Interior test: use canvas offscreen to check pixel
   const ofc=document.createElement('canvas');
-  const sz=Math.ceil(size*36); // bounding box: heart is ~32x26 units wide
+  const sz=Math.ceil(size*36);
   ofc.width=sz*2; ofc.height=sz*2;
   const ofx=ofc.getContext('2d');
-  // Draw heart at center of offscreen canvas
-  const ocx=sz, ocy=sz;
-  heartPath(ofx, ocx, ocy, size);
-  ofx.fillStyle='#fff';
-  ofx.fill();
+  heartPath(ofx,sz,sz,size);
+  ofx.fillStyle='#fff'; ofx.fill();
   const imgData=ofx.getImageData(0,0,sz*2,sz*2);
-
-  function insideHeart(rx,ry){
-    // rx,ry are offsets from cx,cy in screen coords
-    const px=Math.round(ocx+rx), py=Math.round(ocy+ry);
+  function inside(rx,ry){
+    const px=Math.round(sz+rx), py=Math.round(sz+ry);
     if(px<0||py<0||px>=sz*2||py>=sz*2) return false;
     return imgData.data[(py*sz*2+px)*4+3]>128;
   }
-
-  // Bounding box in screen offsets
-  const bx=size*16, by1=size*13, by2=size*12; // top=up by 13*size, bottom=down ~12
+  const bx=size*16, by1=size*13, by2=size*12;
   let attempts=0;
   while(pts.length<count && attempts<count*20){
     attempts++;
     const rx=(Math.random()*2-1)*bx;
     const ry=(Math.random()*(by1+by2))-by1;
-    if(insideHeart(rx,ry)){
-      pts.push([cx+rx, cy+ry]);
-    }
+    if(inside(rx,ry)) pts.push([cx+rx,cy+ry]);
   }
   return pts;
 }
-
-// ── Heart dot particles ───────────────────────────────────────────
 let hDots=[], heartReady=false, allArrived=false;
-
 class HDot{
   constructor(tx,ty,delay,col){
     this.tx=tx; this.ty=ty; this.delay=delay;
-    // spawn from random direction outside
     const a=Math.random()*Math.PI*2;
     const d=Math.min(W,H)*.25+Math.random()*Math.min(W,H)*.2;
     this.x=tx+Math.cos(a)*d; this.y=ty+Math.sin(a)*d;
-    this.active=false; this.arrived=false;
-    this.col=col;
-    this.phase=Math.random()*Math.PI*2;
-    this.r=1.4+Math.random()*1.2; // SMALLER radius — no glow bleed
+    this.active=false; this.arrived=false; this.col=col;
+    this.phase=Math.random()*Math.PI*2; this.r=1.4+Math.random()*1.2;
   }
   step(now){
     if(!this.active){ if(now>=this.delay)this.active=true; return; }
     if(this.arrived) return;
     const dx=this.tx-this.x, dy=this.ty-this.y, d=Math.sqrt(dx*dx+dy*dy);
     if(d<1){ this.x=this.tx; this.y=this.ty; this.arrived=true; return; }
-    const spd=Math.min(d*.12+1.5, 22); this.x+=dx/d*spd; this.y+=dy/d*spd;
+    const spd=Math.min(d*.12+1.5,22); this.x+=dx/d*spd; this.y+=dy/d*spd;
   }
   draw(now){
     if(!this.active) return;
-    const beat = this.arrived ? Math.sin(now*.002+this.phase)*.2+1 : 1;
+    const beat=this.arrived?Math.sin(now*.002+this.phase)*.2+1:1;
     const r=this.r*beat;
-    // solid dot — no large glow radius
     hX.beginPath(); hX.arc(this.x,this.y,r,0,Math.PI*2);
-    hX.fillStyle=rgba(this.col, this.arrived?1:.9); hX.fill();
-    // tiny glow only: radius = r*2.5
+    hX.fillStyle=rgba(this.col,this.arrived?1:.9); hX.fill();
     if(this.arrived){
       const g=hX.createRadialGradient(this.x,this.y,0,this.x,this.y,r*2.5);
       g.addColorStop(0,rgba(this.col,.3)); g.addColorStop(1,rgba(this.col,0));
@@ -234,48 +187,32 @@ class HDot{
     }
   }
 }
-
-// Heart sparkle — tiny, constrained inside heart
-const hSparks=[];
-let heartPtCache=[];
+const hSparks=[]; let heartPtCache=[];
 function addHSparkle(){
   if(!heartReady||heartPtCache.length===0) return;
   const pt=heartPtCache[Math.floor(Math.random()*heartPtCache.length)];
-  hSparks.push({
-    x:pt[0], y:pt[1],
-    vx:(Math.random()-.5)*.5, vy:-Math.random()*1.2-.1,
-    life:1,
-    col:[255, 140+Math.floor(Math.random()*100), 150+Math.floor(Math.random()*80)],
-    r:.6+Math.random()
-  });
+  hSparks.push({ x:pt[0], y:pt[1], vx:(Math.random()-.5)*.5, vy:-Math.random()*1.2-.1,
+    life:1, col:[255,140+Math.floor(Math.random()*100),150+Math.floor(Math.random()*80)], r:.6+Math.random() });
 }
-
-// ── Text reveal ───────────────────────────────────────────────────
 const CHARS=['我','爱','你','刘','彬'];
 const textLayer=document.getElementById('text-layer');
 let charIndex=0, textDone=false;
-
 function buildTextLayer(){
   textLayer.innerHTML='';
   const fs=Math.min(W,H)*.075;
   CHARS.forEach(ch=>{
     const span=document.createElement('span');
-    span.className='char'; span.textContent=ch;
-    span.style.fontSize=fs+'px';
+    span.className='char'; span.textContent=ch; span.style.fontSize=fs+'px';
     textLayer.appendChild(span);
   });
 }
 buildTextLayer();
-
 function revealNextChar(){
   if(charIndex>=CHARS.length){ textDone=true; return; }
   textLayer.querySelectorAll('.char')[charIndex].classList.add('writing');
   charIndex++;
 }
-
-// ── State machine ─────────────────────────────────────────────────
 let phase='idle', rocketsDone=0, totalRockets=6, hintShown=false;
-
 function beginShow(){
   document.getElementById('hint').style.display='none';
   phase='launch'; rocketsDone=0;
@@ -286,62 +223,42 @@ function beginShow(){
     }, i*270+Math.random()*80);
   }
 }
-
 function startConverge(){
   phase='converge';
   const now=Date.now();
-  const cx=W/2, cy=H/2;
-  const size=Math.min(W,H)/42; // size unit so heart fits nicely on screen
-  const n=Math.min(1600, Math.floor(Math.min(W,H)*1.8));
-
-  const pts=sampleHeartPoints(cx, cy, size, n);
+  const cx=W/2, cy=H/2, size=Math.min(W,H)/42;
+  const n=Math.min(1600,Math.floor(Math.min(W,H)*1.8));
+  const pts=sampleHeartPoints(cx,cy,size,n);
   heartPtCache=pts;
-
-  // Color: center deep pink, edge gold
   const total=pts.length;
   hDots=pts.map(([tx,ty],i)=>{
-    const dx=tx-cx, dy=ty-cy;
-    const dist=Math.sqrt(dx*dx+dy*dy);
-    const maxD=size*16;
-    const t=Math.min(dist/maxD,1);
-    const col=lerp3([255,50,110],[255,200,60],t);
-    const delay=now + (i/total)*900 + Math.random()*150;
-    return new HDot(tx,ty,delay,col);
+    const dx=tx-cx, dy=ty-cy, dist=Math.sqrt(dx*dx+dy*dy);
+    const col=lerp3([255,50,110],[255,200,60],Math.min(dist/(size*16),1));
+    return new HDot(tx,ty, now+(i/total)*900+Math.random()*150, col);
   });
 }
-
 function showTapHint(){
   const h=document.getElementById('hint');
-  h.style.display='block';
-  h.innerHTML='✦ 点击屏幕<br>写下心意 ✦';
-  h.style.fontSize='14px';
+  h.style.display='block'; h.innerHTML='✦ 点击屏幕<br>写下心意 ✦'; h.style.fontSize='14px';
   document.getElementById('subtitle').style.opacity='1';
 }
-
 function onTap(x,y){
   if(phase==='idle'){ beginShow(); return; }
   if(phase==='heart'){
     if(!textDone){ revealNextChar(); burst(W/2+(Math.random()-.5)*60,H/2+(Math.random()-.5)*60); }
-    else burst(x,y);
-    return;
+    else burst(x,y); return;
   }
   if(phase==='done') burst(x,y);
 }
-
 document.addEventListener('click',e=>onTap(e.clientX,e.clientY));
 document.addEventListener('touchstart',e=>{ e.preventDefault(); onTap(e.touches[0].clientX,e.touches[0].clientY); },{passive:false});
-
 function idleFire(){ if(phase!=='idle')return; fireRocket(); setTimeout(idleFire,1400+Math.random()*1200); }
 setTimeout(idleFire,700);
-
-// ── Render loop ───────────────────────────────────────────────────
 let sparkTimer=0;
 function loop(){
   requestAnimationFrame(loop);
   const now=Date.now();
-
   bgX.fillStyle='rgba(0,0,0,0.18)'; bgX.fillRect(0,0,W,H);
-
   for(let i=rockets.length-1;i>=0;i--){
     const r=rockets[i]; r.step(); r.draw();
     if(r.done){ r.onBurst&&r.onBurst(); rockets.splice(i,1); }
@@ -349,19 +266,11 @@ function loop(){
   for(let i=sparks.length-1;i>=0;i--){
     const s=sparks[i]; if(!s.step())sparks.splice(i,1); else s.draw();
   }
-
   hX.clearRect(0,0,W,H);
-
   if(phase==='converge'||phase==='heart'){
     let done=true;
     for(const d of hDots){ d.step(now); d.draw(now); if(!d.arrived)done=false; }
-
-    if(done && !allArrived){
-      allArrived=true; phase='heart'; heartReady=true;
-      if(!hintShown){ hintShown=true; showTapHint(); }
-    }
-
-    // sparkles
+    if(done && !allArrived){ allArrived=true; phase='heart'; heartReady=true; if(!hintShown){ hintShown=true; showTapHint(); } }
     sparkTimer++;
     if(sparkTimer%3===0) addHSparkle();
     for(let i=hSparks.length-1;i>=0;i--){
